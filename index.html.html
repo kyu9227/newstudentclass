@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>신입생 배정반 확인</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>신입생 배정반 확인</h1>
+        <p>생년월일(6자리)과 이름을 입력하고 '확인' 버튼을 누르세요.</p>
+        
+        <input type="text" id="birthdate" placeholder="생년월일 (예: 080301)">
+        <input type="text" id="studentName" placeholder="이름 (예: 홍길동)">
+        <button onclick="checkClassFromExcel()">확인</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // 이 함수는 엑셀 파일을 읽고 학생 정보를 확인합니다.
+        function checkClassFromExcel() {
+            const birthdateInput = document.getElementById('birthdate').value.trim();
+            const studentNameInput = document.getElementById('studentName').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (birthdateInput === "" || studentNameInput === "") {
+                resultDiv.textContent = "생년월일과 이름을 모두 입력해 주세요.";
+                resultDiv.style.color = "red";
+                return;
+            }
+
+            // 엑셀 파일을 불러옵니다.
+            fetch('students.xlsx')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('엑셀 파일을 찾을 수 없습니다.');
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => {
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0]; // 첫 번째 시트의 이름
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    // 엑셀 데이터에서 학생 찾기
+                    const foundStudent = jsonData.find(row => 
+                        String(row['생년월일']) === birthdateInput && row['이름'] === studentNameInput
+                    );
+
+                    if (foundStudent) {
+                        resultDiv.textContent = `${foundStudent['이름']} 학생은 1학년 ${foundStudent['배정반']}입니다.`;
+                        resultDiv.style.color = "green";
+                    } else {
+                        resultDiv.textContent = "입력한 정보와 일치하는 학생이 없습니다. 다시 확인해 주세요.";
+                        resultDiv.style.color = "red";
+                    }
+                })
+                .catch(error => {
+                    resultDiv.textContent = '데이터를 불러오는 중 오류가 발생했습니다. ' + error.message;
+                    resultDiv.style.color = "red";
+                });
+        }
+    </script>
+</body>
+</html>
